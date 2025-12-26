@@ -12,15 +12,20 @@
 
 ## Executive Summary
 
-This sprint plan breaks down the ck semantic search integration into 6 sprints spanning 4 weeks. The plan assumes a **single developer** working full-time on this integration. Each sprint includes detailed tasks, acceptance criteria, testing requirements, and risk assessments.
+This sprint plan breaks down the ck semantic search integration into 6 sprints spanning 5 weeks. The plan assumes a **single developer** working full-time on this integration. Each sprint includes detailed tasks, acceptance criteria, testing requirements, and risk assessments.
+
+**Updated for GitHub Issues #9, #10, #11**:
+- **FR-8 (Issue #9)**: Agent chaining with automatic next-step suggestions (Sprint 4)
+- **FR-9 (Issue #10)**: Context pollution prevention with filtering and watch paths (Sprint 4)
+- **FR-10 (Issue #11)**: Command namespace protection - IMMEDIATE BLOCKER (Sprint 1)
 
 **Key Milestones**:
-- **Sprint 1 (Week 1)**: Foundation - Installation, integrity checks, basic infrastructure
+- **Sprint 1 (Week 1)**: Foundation - Installation, integrity checks, **command namespace protection (P0)**
 - **Sprint 2 (Week 2)**: Core Search - /ride integration, Ghost/Shadow detection
 - **Sprint 3 (Week 3)**: Context Management - Tool Result Clearing, trajectory logging
-- **Sprint 4 (Week 3)**: Skill Enhancements - implementing-tasks, reviewing-code integration
-- **Sprint 5 (Week 4)**: Quality & Polish - Testing, documentation, edge cases
-- **Sprint 6 (Week 4)**: Validation & Handoff - E2E testing, user acceptance, deployment prep
+- **Sprint 4 (Week 3-4)**: Skill Enhancements - implementing-tasks, reviewing-code, **agent chaining, context filtering**
+- **Sprint 5 (Week 5)**: Quality & Polish - Testing, documentation, edge cases
+- **Sprint 6 (Week 5)**: Validation & Handoff - E2E testing, user acceptance, deployment prep
 
 **Success Metrics**:
 - Search Speed: <500ms on 1M LOC (PRD NFR-1.1)
@@ -322,6 +327,129 @@ Add ck dependency to .loa-version.json with version requirement.
 
 ---
 
+#### Task 1.7: Create Reserved Commands Registry (P0 BLOCKER)
+**Priority**: P0 (Blocker)
+**Estimated Effort**: 1 hour
+**PRD Reference**: FR-10.1, GitHub Issue #11
+**SDD Reference**: §3.9
+
+**Description**:
+Create `.claude/reserved-commands.yaml` with list of Claude Code built-in commands to prevent namespace conflicts.
+
+**Acceptance Criteria**:
+- [ ] File created: `.claude/reserved-commands.yaml`
+- [ ] Includes all Claude Code built-in commands: config, help, clear, compact, cost, doctor, init, login, logout, memory, model, pr-comments, review, terminal-setup, vim
+- [ ] Version and metadata fields included
+- [ ] Last updated timestamp
+
+**Testing**:
+- Validate YAML syntax
+- Verify completeness of reserved list
+
+**Dependencies**: None
+
+**Implementation Details**:
+See SDD §3.9 for full YAML structure.
+
+---
+
+#### Task 1.8: Implement Command Validation Script (P0 BLOCKER)
+**Priority**: P0 (Blocker)
+**Estimated Effort**: 3 hours
+**PRD Reference**: FR-10.1, GitHub Issue #11
+**SDD Reference**: §3.9
+
+**Description**:
+Create validation script that checks all Loa commands against reserved command list and auto-renames conflicts.
+
+**Acceptance Criteria**:
+- [ ] Script created: `.claude/scripts/validate-commands.sh`
+- [ ] Loads reserved commands from `.claude/reserved-commands.yaml`
+- [ ] Scans all `.claude/commands/*.md` files
+- [ ] Detects conflicts with reserved names
+- [ ] Auto-renames with `-loa` suffix (e.g., `config` → `config-loa`)
+- [ ] Updates internal frontmatter references
+- [ ] Reports renamed commands to user
+
+**Testing**:
+- Create dummy command with reserved name
+- Run validation script
+- Verify auto-rename occurs
+- Verify frontmatter updated
+
+**Dependencies**: Task 1.7 (reserved commands registry)
+
+**Implementation Details**:
+See SDD §3.9 for bash script implementation.
+
+---
+
+#### Task 1.9: Rename /config to /mcp-config (P0 BLOCKER)
+**Priority**: P0 (Blocker)
+**Estimated Effort**: 2 hours
+**PRD Reference**: FR-10.1, GitHub Issue #11
+**SDD Reference**: §3.9
+
+**Description**:
+Rename existing `/config` command to `/mcp-config` to resolve conflict with Claude Code's built-in `/config`.
+
+**Acceptance Criteria**:
+- [ ] File renamed: `.claude/commands/config.md` → `.claude/commands/mcp-config.md`
+- [ ] Frontmatter updated: `command: mcp-config`
+- [ ] Command description clarified: "Configure MCP integrations"
+- [ ] All documentation references updated
+- [ ] CHANGELOG.md entry added for breaking change
+
+**Testing**:
+- Verify `/mcp-config` command works
+- Verify `/config` invokes Claude Code built-in
+- Verify no orphaned references to old command
+
+**Dependencies**: Task 1.8 (validation script can automate this)
+
+**Implementation Details**:
+```bash
+# Manual rename or use validation script
+mv .claude/commands/config.md .claude/commands/mcp-config.md
+sed -i 's/command: config/command: mcp-config/g' .claude/commands/mcp-config.md
+```
+
+---
+
+#### Task 1.10: Integrate Command Validation into Pre-flight
+**Priority**: P0 (Blocker)
+**Estimated Effort**: 1 hour
+**PRD Reference**: FR-10.1
+**SDD Reference**: §3.9
+
+**Description**:
+Add command namespace validation to pre-flight checks so conflicts are detected before any operations.
+
+**Acceptance Criteria**:
+- [ ] `.claude/scripts/preflight.sh` updated
+- [ ] Calls `validate-commands.sh` during pre-flight
+- [ ] Validation runs during `/setup` and `/update`
+- [ ] User notified of any renamed commands
+
+**Testing**:
+- Run `/setup` with conflicting command
+- Verify validation catches conflict
+- Verify auto-rename occurs
+
+**Dependencies**: Task 1.8 (validation script)
+
+**Implementation Details**:
+Add to preflight.sh:
+```bash
+# Command namespace validation
+if [[ -f "${PROJECT_ROOT}/.claude/scripts/validate-commands.sh" ]]; then
+    echo "Validating command namespace..." >&2
+    "${PROJECT_ROOT}/.claude/scripts/validate-commands.sh"
+fi
+```
+
+---
+
 ### Sprint 1 Risk Assessment
 
 **Risks**:
@@ -346,15 +474,20 @@ Add ck dependency to .loa-version.json with version requirement.
 - [ ] .gitignore excludes .ck/ directory
 - [ ] Pre-flight integrity script functional (all 3 modes)
 - [ ] .claude/overrides/ structure created
+- [ ] **Reserved commands registry created**
+- [ ] **Command validation script functional**
+- [ ] **/config renamed to /mcp-config**
+- [ ] **Command validation integrated into pre-flight**
 
 **Nice to Have**:
 - [ ] Installation documentation polished with screenshots
 - [ ] Setup displays estimated index time for large codebases
 
 **Definition of Done**:
-- [ ] All P0 tasks complete and tested
+- [ ] All P0 tasks complete and tested (including command namespace protection)
 - [ ] Documentation updated (INSTALLATION.md, protocols)
 - [ ] Manual testing passed (with/without ck installed)
+- [ ] No command conflicts with Claude Code built-ins
 - [ ] Ready for Sprint 2 (core search integration)
 
 ---
@@ -1266,6 +1399,262 @@ Enhance /audit-sprint command to use semantic search for security analysis.
 
 ---
 
+#### Task 4.7: Create Agent Chaining Workflow Definition
+**Priority**: P1 (High)
+**Estimated Effort**: 3 hours
+**PRD Reference**: FR-8.1, GitHub Issue #9
+**SDD Reference**: §3.7
+
+**Description**:
+Create declarative workflow chain definition that maps each command to its logical next step with validation conditions.
+
+**Acceptance Criteria**:
+- [ ] File created: `.claude/workflow-chain.yaml`
+- [ ] Define workflow chain: plan-and-analyze → architect → sprint-plan → implement → review-sprint → audit-sprint
+- [ ] Conditional routing for review/audit (approval vs feedback)
+- [ ] Variable substitution for sprint IDs {sprint}, {N+1}
+- [ ] Validation conditions (file_exists, file_content_match)
+- [ ] Custom messages for each transition
+
+**Testing**:
+- Validate YAML syntax with yq
+- Test variable substitution logic
+- Verify condition types supported
+
+**Dependencies**: None
+
+**Implementation Details**:
+See SDD §3.7 for full YAML structure.
+
+---
+
+#### Task 4.8: Implement Next-Step Suggestion Engine
+**Priority**: P1 (High)
+**Estimated Effort**: 4 hours
+**PRD Reference**: FR-8.1, GitHub Issue #9
+**SDD Reference**: §3.7
+
+**Description**:
+Create script that reads workflow chain definition and suggests next command based on current phase completion.
+
+**Acceptance Criteria**:
+- [ ] Script created: `.claude/scripts/suggest-next-step.sh`
+- [ ] Reads `.claude/workflow-chain.yaml`
+- [ ] Accepts current phase and sprint ID as arguments
+- [ ] Validates completion conditions before suggesting
+- [ ] Handles conditional routing (approval vs feedback)
+- [ ] Substitutes variables in next step and messages
+- [ ] Returns formatted suggestion with call-to-action
+
+**Testing**:
+- Test with completed phase (prd.md exists)
+- Test with incomplete phase (file missing)
+- Test conditional routing (review with/without approval)
+- Test sprint ID substitution
+
+**Dependencies**: Task 4.7 (workflow chain definition)
+
+**Implementation Details**:
+See SDD §3.7 for bash script implementation.
+
+---
+
+#### Task 4.9: Integrate Agent Chaining into Agent Skills
+**Priority**: P1 (High)
+**Estimated Effort**: 3 hours
+**PRD Reference**: FR-8.1, GitHub Issue #9
+**SDD Reference**: §3.7
+
+**Description**:
+Update agent skill completion hooks to call suggestion engine and display next-step recommendations.
+
+**Acceptance Criteria**:
+- [ ] Update agent skills to call `suggest-next-step.sh` on successful completion
+- [ ] Display formatted "Next Step" section at end of output
+- [ ] Show recommended command with clear call-to-action
+- [ ] Skills updated: discovering-requirements, designing-architecture, planning-sprints, implementing-tasks, reviewing-code, auditing-security
+- [ ] Silent failure if suggestion engine unavailable
+
+**Testing**:
+- Complete /plan-and-analyze, verify suggests /architect
+- Complete /implement sprint-1, verify suggests /review-sprint sprint-1
+- Complete /review-sprint with approval, verify suggests /audit-sprint
+- Complete /review-sprint with feedback, verify suggests /implement (retry)
+
+**Dependencies**: Task 4.8 (suggestion engine)
+
+**Implementation Details**:
+Add to each agent skill completion:
+```bash
+# Suggest next step
+if [[ -f "${PROJECT_ROOT}/.claude/scripts/suggest-next-step.sh" ]]; then
+    NEXT_STEP=$("${PROJECT_ROOT}/.claude/scripts/suggest-next-step.sh" "${CURRENT_PHASE}" "${SPRINT_ID}" 2>/dev/null || true)
+    if [[ -n "${NEXT_STEP}" ]]; then
+        echo ""
+        echo "## Next Step"
+        echo ""
+        echo "${NEXT_STEP}"
+    fi
+fi
+```
+
+---
+
+#### Task 4.10: Create Context Filtering Configuration
+**Priority**: P1 (High)
+**Estimated Effort**: 2 hours
+**PRD Reference**: FR-9.1, FR-9.2, GitHub Issue #10
+**SDD Reference**: §3.8
+
+**Description**:
+Add context filtering configuration to `.loa.config.yaml` with watch paths, exclude patterns, signal thresholds, and archive zone.
+
+**Acceptance Criteria**:
+- [ ] `.loa.config.yaml` updated with `drift_detection` section
+- [ ] `watch_paths` configurable (default: .claude/, loa-grimoire/)
+- [ ] `exclude_patterns` for node_modules, logs, etc.
+- [ ] `context_filtering` section added
+- [ ] `archive_zone` path configurable (default: loa-grimoire/archive/)
+- [ ] `default_excludes` for session artifacts
+- [ ] `signal_threshold` (high/medium/low)
+- [ ] `draft_ttl_days` for TTL automation
+
+**Testing**:
+- Validate YAML syntax
+- Verify defaults are sensible
+- Test with custom watch paths
+
+**Dependencies**: None
+
+**Implementation Details**:
+```yaml
+# .loa.config.yaml
+drift_detection:
+  watch_paths:
+    - ".claude/"
+    - "loa-grimoire/"
+  exclude_patterns:
+    - "**/node_modules/**"
+    - "**/*.log"
+
+context_filtering:
+  enable_filtering: true
+  archive_zone: "loa-grimoire/archive/"
+  signal_threshold: "medium"
+  default_excludes:
+    - "**/brainstorm-*.md"
+    - "**/session-notes-*.md"
+    - "**/meeting-*.md"
+    - "**/draft-*.md"
+  draft_ttl_days: 30
+```
+
+---
+
+#### Task 4.11: Implement Context Filtering Script
+**Priority**: P1 (High)
+**Estimated Effort**: 4 hours
+**PRD Reference**: FR-9.2, GitHub Issue #10
+**SDD Reference**: §3.8
+
+**Description**:
+Create script that filters search results based on signal markers, archive zone, and exclude patterns.
+
+**Acceptance Criteria**:
+- [ ] Script created: `.claude/scripts/filter-search-results.sh`
+- [ ] Reads `.loa.config.yaml` for filtering configuration
+- [ ] Builds exclude arguments for ck (--exclude)
+- [ ] Builds exclude arguments for grep (--exclude-dir, --exclude)
+- [ ] Filters by signal marker (frontmatter parsing)
+- [ ] Excludes archive zone automatically
+- [ ] Master toggle: `enable_filtering` can disable all filtering
+
+**Testing**:
+- Test with ck installed (verify --exclude arguments)
+- Test with grep fallback (verify --exclude-dir arguments)
+- Test signal marker filtering (frontmatter parsing)
+- Test archive zone exclusion
+- Test with filtering disabled
+
+**Dependencies**: Task 4.10 (context filtering config)
+
+**Implementation Details**:
+See SDD §3.8 for bash script implementation.
+
+---
+
+#### Task 4.12: Update Drift Detection for Configurable Watch Paths
+**Priority**: P1 (High)
+**Estimated Effort**: 2 hours
+**PRD Reference**: FR-9.1, GitHub Issue #10
+**SDD Reference**: §3.8
+
+**Description**:
+Enhance drift detection script to use configurable watch paths from `.loa.config.yaml`.
+
+**Acceptance Criteria**:
+- [ ] `.claude/scripts/detect-drift.sh` updated
+- [ ] Reads `drift_detection.watch_paths` from config
+- [ ] Falls back to defaults if not configured
+- [ ] Checks git status for each watch path
+- [ ] Reports drift in all configured directories
+- [ ] Respects exclude patterns
+
+**Testing**:
+- Test with default watch paths
+- Test with custom watch paths (.meta/, docs/architecture/)
+- Verify git status checked for each path
+- Verify exclude patterns respected
+
+**Dependencies**: Task 4.10 (context filtering config)
+
+**Implementation Details**:
+See SDD §3.8 for enhanced detect-drift.sh.
+
+---
+
+#### Task 4.13: Integrate Context Filtering into Search Orchestrator
+**Priority**: P1 (High)
+**Estimated Effort**: 2 hours
+**PRD Reference**: FR-9.2, GitHub Issue #10
+**SDD Reference**: §3.8
+
+**Description**:
+Update search orchestrator to apply context filtering before executing searches.
+
+**Acceptance Criteria**:
+- [ ] `.claude/scripts/search-orchestrator.sh` updated
+- [ ] Sources `filter-search-results.sh`
+- [ ] Builds exclude arguments from configuration
+- [ ] Applies excludes to ck commands
+- [ ] Applies excludes to grep commands
+- [ ] Post-processes results with signal marker filtering
+- [ ] Respects master toggle
+
+**Testing**:
+- Run semantic search with archive zone documents (should exclude)
+- Run hybrid search with low signal documents (should exclude if threshold=medium)
+- Test with filtering disabled (should include all)
+
+**Dependencies**: Task 4.11 (filtering script), Sprint 2 (search orchestrator)
+
+**Implementation Details**:
+Add to search-orchestrator.sh:
+```bash
+# Build exclude arguments
+source "${PROJECT_ROOT}/.claude/scripts/filter-search-results.sh"
+
+if [[ "${LOA_SEARCH_MODE}" == "ck" ]]; then
+    readarray -t CK_EXCLUDES < <(build_ck_excludes)
+    ck --semantic "${QUERY}" "${CK_EXCLUDES[@]}" --jsonl
+else
+    readarray -t GREP_EXCLUDES < <(build_grep_excludes)
+    grep -rn "${QUERY}" "${GREP_EXCLUDES[@]}" "${SEARCH_PATH}"
+fi
+```
+
+---
+
 ### Sprint 4 Risk Assessment
 
 **Risks**:
@@ -1964,6 +2353,7 @@ Execute self-audit checkpoint on entire integration project.
 
 | Feature | Impact | Effort | Priority | Sprint |
 |---------|--------|--------|----------|--------|
+| **Command namespace protection** | **High** | **Low** | **P0** | **1** |
 | Pre-flight integrity checks | High | Medium | P0 | 1 |
 | Search orchestration layer | High | High | P0 | 2 |
 | /ride dual-path integration | High | High | P0 | 2 |
@@ -1978,6 +2368,10 @@ Execute self-audit checkpoint on entire integration project.
 | reviewing-code enhancement | Medium | Medium | P1 | 4 |
 | Search fallback protocol | High | Low | P0 | 4 |
 | Beads integration | Low | Low | P1 | 4 |
+| **Agent chaining (next step)** | **High** | **Medium** | **P1** | **4** |
+| **Context pollution prevention** | **High** | **Medium** | **P1** | **4** |
+| **Configurable watch paths** | **Medium** | **Low** | **P1** | **4** |
+| **Signal markers filtering** | **Medium** | **Medium** | **P1** | **4** |
 | Unit testing | High | Medium | P0 | 5 |
 | Integration testing | High | Medium | P0 | 5 |
 | Performance benchmarking | Medium | Low | P1 | 5 |
@@ -2410,13 +2804,17 @@ Self-track velocity via NOTES.md:
 
 ## Appendix: Task Summary
 
-### Sprint 1 (6 tasks, 15.5 hours)
+### Sprint 1 (10 tasks, 23.5 hours)
 1. Update Installation Documentation (2h)
 2. Update /setup Command (4h)
 3. Update .gitignore (0.5h)
 4. Create Pre-Flight Integrity Protocol (6h)
 5. Create Synthesis Protection Structure (2h)
 6. Update .loa-version.json (1h)
+7. Create Reserved Commands Registry (1h) - P0 BLOCKER
+8. Implement Command Validation Script (3h) - P0 BLOCKER
+9. Rename /config to /mcp-config (2h) - P0 BLOCKER
+10. Integrate Command Validation into Pre-flight (1h) - P0 BLOCKER
 
 ### Sprint 2 (6 tasks, 40 hours)
 1. Implement Search Orchestrator (8h)
@@ -2436,13 +2834,20 @@ Self-track velocity via NOTES.md:
 7. Create JSONL Parser with Failure Awareness (4h)
 8. Create Trajectory Compaction Script (3h)
 
-### Sprint 4 (6 tasks, 27 hours)
+### Sprint 4 (13 tasks, 49 hours)
 1. Enhance implementing-tasks Skill (6h)
 2. Enhance reviewing-code Skill (6h)
 3. Create Search Fallback Protocol (4h)
 4. Integrate Beads Detection (3h)
 5. Update Architect Command (4h) - P2
 6. Update Audit-Sprint Command (4h) - P2
+7. Create Agent Chaining Workflow Definition (3h) - FR-8
+8. Implement Next-Step Suggestion Engine (4h) - FR-8
+9. Integrate Agent Chaining into Agent Skills (3h) - FR-8
+10. Create Context Filtering Configuration (2h) - FR-9
+11. Implement Context Filtering Script (4h) - FR-9
+12. Update Drift Detection for Configurable Watch Paths (2h) - FR-9
+13. Integrate Context Filtering into Search Orchestrator (2h) - FR-9
 
 ### Sprint 5 (8 tasks, 31 hours)
 1. Unit Testing - Core Components (8h)
@@ -2464,7 +2869,12 @@ Self-track velocity via NOTES.md:
 7. Generate Checksums (1h)
 8. Final Validation - Self-Audit (2h)
 
-**Total Estimated Effort**: 171.5 hours (~4 weeks at 40h/week)
+**Total Estimated Effort**: 201.5 hours (~5 weeks at 40h/week)
+
+**Breakdown by New Features**:
+- Command Namespace Protection (FR-10): +8 hours (Sprint 1)
+- Agent Chaining (FR-8): +10 hours (Sprint 4)
+- Context Filtering (FR-9): +12 hours (Sprint 4)
 
 ---
 
