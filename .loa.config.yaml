@@ -80,6 +80,59 @@ integrations:
   - linear
 
 # =============================================================================
+# Drift Detection (Sprint 4 - FR-9.1, GitHub Issue #10)
+# =============================================================================
+drift_detection:
+  # Directories to watch for changes
+  watch_paths:
+    - ".claude/"
+    - "loa-grimoire/"
+    # Add custom directories as needed:
+    # - ".meta/"
+    # - "docs/architecture/"
+
+  # Patterns to exclude from drift detection
+  exclude_patterns:
+    - "**/node_modules/**"
+    - "**/*.log"
+    - "**/.DS_Store"
+    - "**/dist/**"
+    - "**/build/**"
+    - "**/__pycache__/**"
+
+# =============================================================================
+# Context Filtering (Sprint 4 - FR-9.2, GitHub Issue #10)
+# =============================================================================
+context_filtering:
+  # Master toggle: set to false to disable all filtering
+  enable_filtering: true
+
+  # Archive zone - automatically excluded from all searches
+  archive_zone: "loa-grimoire/archive/"
+
+  # Signal threshold: exclude documents below this level
+  # Options: low, medium, high
+  # - high: Only include high-signal documents
+  # - medium: Include medium and high (default)
+  # - low: Include all (effectively no filtering)
+  signal_threshold: "medium"
+
+  # Patterns for low-signal documents to exclude
+  default_excludes:
+    - "**/brainstorm-*.md"
+    - "**/session-notes-*.md"
+    - "**/meeting-*.md"
+    - "**/draft-*.md"
+    - "**/scratch-*.md"
+    - "**/temp-*.md"
+
+  # Auto-archive drafts older than N days (0 = disabled)
+  draft_ttl_days: 30
+
+  # Frontmatter signal marker support
+  respect_frontmatter_signals: true
+
+# =============================================================================
 # Behavior Preferences
 # =============================================================================
 preferences:
