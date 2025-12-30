@@ -51,7 +51,9 @@ temp/
 
 # User context files (discovery inputs, uploaded docs, extracted content)
 # These are user-specific inputs that should never be committed
-loa-grimoire/context/
+# The README.md is tracked to explain the directory's purpose
+loa-grimoire/context/*
+!loa-grimoire/context/README.md
 
 # ck semantic search state (embeddings cache, indexes)
 # Large machine-specific files that rebuild automatically
