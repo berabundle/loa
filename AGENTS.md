@@ -7,3 +7,5 @@
 - Run Codex from the repo root so `.codex/skills` is in scope.
 - Invoke Loa workflows via `/prompts:<command>` (for example, `/prompts:plan-and-analyze`).
 - The `loa-command-runner` skill reads `.claude/commands/<name>.md` and dispatches to the referenced Loa skill. Follow those instructions as the source of truth.
+
+Note: Use `~` for home paths instead of usernames (for example `~/Projects/...`).

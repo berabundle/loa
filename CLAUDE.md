@@ -445,3 +445,5 @@ registry:
   - `grounding-check.sh` - Grounding ratio calculation
   - `synthesis-checkpoint.sh` - Pre-clear validation
   - `self-heal-state.sh` - State Zone recovery
+
+Note: Use `~` for home paths instead of usernames (for example `~/Projects/...`).
